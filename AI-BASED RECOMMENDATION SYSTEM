@@ -1,0 +1,77 @@
+package com.ai.recommendation;
+
+import org.apache.mahout.cf.taste.common.TasteException;
+import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
+import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
+import org.apache.mahout.cf.taste.impl.similarity.UncenteredCosineSimilarity;
+import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.recommender.RecommendedItem;
+import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
+import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+public class RecommenderSystem {
+
+    public static void main(String[] args) {
+        try {
+            // Load data from CSV file
+            File file = new File(RecommenderSystem.class.getResource("/sample_data.csv").getFile());
+            DataModel model = new FileDataModel(file);
+
+            // Create item similarity object
+            //ItemSimilarity similarity = new PearsonCorrelationSimilarity(model);
+            ItemSimilarity similarity = new UncenteredCosineSimilarity(model);
+
+            
+         // Debug: Log similarity scores between items
+            System.out.println("Item Similarity Scores:");
+            LongPrimitiveIterator itemsIterator1 = model.getItemIDs();
+
+            while (itemsIterator1.hasNext()) {
+                long item1 = itemsIterator1.nextLong();
+                LongPrimitiveIterator itemsIterator2 = model.getItemIDs(); // Reset the iterator for inner loop
+                while (itemsIterator2.hasNext()) {
+                    long item2 = itemsIterator2.nextLong();
+                    if (item1 != item2) {
+                        double simScore = similarity.itemSimilarity(item1, item2);
+                        System.out.println("Similarity between Item " + item1 + " and Item " + item2 + ": " + simScore);
+                    }
+                }
+            }
+           
+            // Create the recommender
+            GenericItemBasedRecommender recommender = new GenericItemBasedRecommender(model, similarity);
+            
+            // Generate recommendations for user ID 1
+            int userId = 1;
+            int numRecommendations = 3;
+            List<RecommendedItem> recommendations = recommender.recommend(userId, numRecommendations);
+
+            // Check and print recommendations
+            if (recommendations.isEmpty()) {
+                System.out.println("No recommendations found for User " + userId + ".");
+             // Provide fallback recommendations if none are found
+                if (recommendations.isEmpty()) {
+                    System.out.println("No recommendations found. Showing popular items instead:");
+                    // Code to list top-rated items or most interacted items
+                }
+
+            } else {
+                System.out.println("Recommendations for User " + userId + ":");
+                for (RecommendedItem recommendation : recommendations) {
+                    System.out.println("Item: " + recommendation.getItemID() + ", Estimated Preference: " + recommendation.getValue());
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading the data file: " + e.getMessage());
+        } catch (TasteException e) {
+            System.err.println("Error generating recommendations: " + e.getMessage());
+        } catch (NullPointerException e) {
+            System.err.println("Error: File not found. Make sure the 'sample_data.csv' is in the resources folder.");
+        }
+    }
+}
+
